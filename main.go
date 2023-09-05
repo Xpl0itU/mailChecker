@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -42,6 +43,7 @@ type MailFilter struct {
 }
 
 func checkEmailsWithFilters(filters []MailFilter, server, email, password, mailOkFolder, mailFailedFolder string) error {
+	anyErrors := false
 	c, err := connectToIMAP(server, email, password)
 	if err != nil {
 		return err
@@ -59,6 +61,7 @@ func checkEmailsWithFilters(filters []MailFilter, server, email, password, mailO
 
 		if len(messages) == 0 && filter.FailIfNotFound {
 			fmt.Printf("Not found: %+v\n", filter)
+			anyErrors = true
 			continue
 		}
 
@@ -66,12 +69,16 @@ func checkEmailsWithFilters(filters []MailFilter, server, email, password, mailO
 			if filter.FailIfFound {
 				fmt.Printf("Error: %+v\n", filter)
 				moveMessage(c, msg, mailFailedFolder)
+				anyErrors = true
 			} else {
 				moveMessage(c, msg, mailOkFolder)
 			}
 		}
 	}
 
+	if anyErrors {
+		return errors.New("found errors")
+	}
 	return nil
 }
 

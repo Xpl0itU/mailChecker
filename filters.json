@@ -1,0 +1,10 @@
+[
+    {
+        "mail": "test@localhost",
+        "subject": "test",
+        "fail_if_found": false,
+        "hour_threshold": 24,
+        "comment": "test message",
+        "fail_if_not_found": true
+    }
+]

@@ -83,7 +83,7 @@ func checkEmailsWithFilters(filters []MailFilter, server, email, password, mailO
 }
 
 func connectToIMAP(server, email, password string) (*client.Client, error) {
-	c, err := client.Dial(server)
+	c, err := client.DialTLS(server, nil)
 	if err != nil {
 		return nil, err
 	}

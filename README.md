@@ -1,4 +1,4 @@
-### Go IMAP Email Checker
+# Go IMAP Email Checker
 This Go program checks emails using the IMAP protocol and performs actions based on predefined filters. It is designed to move emails to different folders depending on the filter criteria.
 
 ## Prerequisites
@@ -45,8 +45,8 @@ Run the binary in your terminal:
 ```
 The program will connect to your IMAP server, apply the defined filters to your emails, and move them to the specified folders based on the filter criteria.
 
-Contributing
+## Contributing
 Contributions to this project are welcome. Please submit issues or pull requests to improve the program. Your contributions are highly appreciated!
 
-License
+## License
 This project is licensed under the GNU General Public License v3.0 (GPL-3.0). You can find the full license text in the LICENSE file.

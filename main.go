@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log"
 	"os"
 	"time"
@@ -63,14 +62,14 @@ func checkEmailsWithFilters(filters []MailFilter, server, email, password, mailO
 		}
 
 		if len(messages) == 0 && filter.FailIfNotFound {
-			fmt.Printf("Not found: %+v\n", filter)
+			log.Printf("Not found: %+v\n", filter)
 			anyErrors = true
 			continue
 		}
 
 		for _, msg := range messages {
 			if filter.FailIfFound {
-				fmt.Printf("Error: %+v\n", filter)
+				log.Printf("Error: %+v\n", filter)
 				failedSet.AddNum(msg.SeqNum)
 				anyErrors = true
 			} else {
@@ -81,16 +80,16 @@ func checkEmailsWithFilters(filters []MailFilter, server, email, password, mailO
 
 	if !okSet.Empty() {
 		if err := moveMessages(c, okSet, mailOkFolder); err != nil {
-			fmt.Println(err)
+			log.Println(err)
 		}
-		fmt.Printf("Moved messages to %s\n", mailOkFolder)
+		log.Printf("Moved messages to %s\n", mailOkFolder)
 	}
 
 	if !failedSet.Empty() {
 		if err := moveMessages(c, failedSet, mailFailedFolder); err != nil {
-			fmt.Println(err)
+			log.Println(err)
 		}
-		fmt.Printf("Moved messages to %s\n", mailFailedFolder)
+		log.Printf("Moved messages to %s\n", mailFailedFolder)
 	}
 
 	if anyErrors {

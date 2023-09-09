@@ -15,20 +15,20 @@ import (
 func main() {
 	err := godotenv.Load()
 	if err != nil {
-		log.Fatal("Error loading .env file")
+		log.Fatalln("Error loading .env file")
 	}
 
 	filtersContents, err := os.ReadFile("filters.json")
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalln(err)
 	}
 	var filters []MailFilter
 	if err := json.Unmarshal(filtersContents, &filters); err != nil {
-		log.Fatal(err)
+		log.Fatalln(err)
 	}
 
 	if err := checkEmailsWithFilters(filters, os.Getenv("SERVER"), os.Getenv("EMAIL"), os.Getenv("PASSWORD"), os.Getenv("MAIL_OK_FOLDER"), os.Getenv("MAIL_FAILED_FOLDER")); err != nil {
-		log.Fatal(err)
+		log.Fatalln(err)
 	}
 }
 
@@ -81,15 +81,17 @@ func checkEmailsWithFilters(filters []MailFilter, server, email, password, mailO
 	if !okSet.Empty() {
 		if err := moveMessages(c, okSet, mailOkFolder); err != nil {
 			log.Println(err)
+		} else {
+			log.Printf("Moved messages to %s\n", mailOkFolder)
 		}
-		log.Printf("Moved messages to %s\n", mailOkFolder)
 	}
 
 	if !failedSet.Empty() {
 		if err := moveMessages(c, failedSet, mailFailedFolder); err != nil {
 			log.Println(err)
+		} else {
+			log.Printf("Moved messages to %s\n", mailFailedFolder)
 		}
-		log.Printf("Moved messages to %s\n", mailFailedFolder)
 	}
 
 	if anyErrors {

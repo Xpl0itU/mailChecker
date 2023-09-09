@@ -53,6 +53,9 @@ func checkEmailsWithFilters(filters []MailFilter, server, email, password, mailO
 	c.Create(mailOkFolder)
 	c.Create(mailFailedFolder)
 
+	failedSet := new(imap.SeqSet)
+	okSet := new(imap.SeqSet)
+
 	for _, filter := range filters {
 		messages, err := searchEmails(c, filter)
 		if err != nil {
@@ -68,12 +71,26 @@ func checkEmailsWithFilters(filters []MailFilter, server, email, password, mailO
 		for _, msg := range messages {
 			if filter.FailIfFound {
 				fmt.Printf("Error: %+v\n", filter)
-				moveMessage(c, msg, mailFailedFolder)
+				failedSet.AddNum(msg.SeqNum)
 				anyErrors = true
 			} else {
-				moveMessage(c, msg, mailOkFolder)
+				okSet.AddNum(msg.SeqNum)
 			}
 		}
+	}
+
+	if !okSet.Empty() {
+		if err := moveMessages(c, okSet, mailOkFolder); err != nil {
+			fmt.Println(err)
+		}
+		fmt.Printf("Moved messages to %s\n", mailOkFolder)
+	}
+
+	if !failedSet.Empty() {
+		if err := moveMessages(c, failedSet, mailFailedFolder); err != nil {
+			fmt.Println(err)
+		}
+		fmt.Printf("Moved messages to %s\n", mailFailedFolder)
 	}
 
 	if anyErrors {
@@ -134,13 +151,10 @@ func searchEmails(c *client.Client, filter MailFilter) ([]*imap.Message, error) 
 	return messages, nil
 }
 
-func moveMessage(c *client.Client, msg *imap.Message, folderName string) error {
-	set := new(imap.SeqSet)
-	set.AddNum(msg.SeqNum)
-	err := c.Move(set, folderName)
+func moveMessages(c *client.Client, messages *imap.SeqSet, folderName string) error {
+	err := c.Move(messages, folderName)
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Moved message to %s: %s\n", folderName, msg.Envelope.Subject)
 	return nil
 }

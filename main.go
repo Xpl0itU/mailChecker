@@ -67,9 +67,12 @@ func checkEmailsWithFilters(filters []MailFilter, server, email, password, mailO
 			continue
 		}
 
+		if filter.FailIfFound {
+			log.Printf("Error: %+v\n", filter)
+		}
+
 		for _, msg := range messages {
 			if filter.FailIfFound {
-				log.Printf("Error: %+v\n", filter)
 				failedSet.AddNum(msg.SeqNum)
 				anyErrors = true
 			} else {
@@ -138,7 +141,7 @@ func searchEmails(c *client.Client, filter MailFilter) ([]*imap.Message, error) 
 
 	go func() {
 		if err := c.Fetch(seqset, []imap.FetchItem{imap.FetchEnvelope}, messagesChan); err != nil {
-			log.Println("Error fetching messages:", err)
+			log.Printf("Error fetching messages: %s\n", err.Error())
 		}
 	}()
 

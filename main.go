@@ -52,16 +52,13 @@ func checkEmailsWithFilters(filters []MailFilter, server, email, password, mailO
 	c.Create(mailOkFolder)
 	c.Create(mailFailedFolder)
 
-	failedSet := new(imap.SeqSet)
-	okSet := new(imap.SeqSet)
-
 	for _, filter := range filters {
 		messages, err := searchEmails(c, filter)
 		if err != nil {
 			return err
 		}
 
-		if len(messages) == 0 && filter.FailIfNotFound {
+		if messages.Empty() && filter.FailIfNotFound {
 			log.Printf("Not found: %+v\n", filter)
 			anyErrors = true
 			continue
@@ -71,29 +68,19 @@ func checkEmailsWithFilters(filters []MailFilter, server, email, password, mailO
 			log.Printf("Error: %+v\n", filter)
 		}
 
-		for _, msg := range messages {
-			if filter.FailIfFound {
-				failedSet.AddNum(msg.SeqNum)
-				anyErrors = true
+		if filter.FailIfFound {
+			if err := moveMessages(c, messages, mailFailedFolder); err != nil {
+				log.Println(err)
 			} else {
-				okSet.AddNum(msg.SeqNum)
+				log.Printf("Moved messages to %s\n", mailFailedFolder)
 			}
-		}
-	}
-
-	if !okSet.Empty() {
-		if err := moveMessages(c, okSet, mailOkFolder); err != nil {
-			log.Println(err)
+			anyErrors = true
 		} else {
-			log.Printf("Moved messages to %s\n", mailOkFolder)
-		}
-	}
-
-	if !failedSet.Empty() {
-		if err := moveMessages(c, failedSet, mailFailedFolder); err != nil {
-			log.Println(err)
-		} else {
-			log.Printf("Moved messages to %s\n", mailFailedFolder)
+			if err := moveMessages(c, messages, mailOkFolder); err != nil {
+				log.Println(err)
+			} else {
+				log.Printf("Moved messages to %s\n", mailOkFolder)
+			}
 		}
 	}
 
@@ -116,7 +103,7 @@ func connectToIMAP(server, email, password string) (*client.Client, error) {
 	return c, nil
 }
 
-func searchEmails(c *client.Client, filter MailFilter) ([]*imap.Message, error) {
+func searchEmails(c *client.Client, filter MailFilter) (*imap.SeqSet, error) {
 	_, err := c.Select("INBOX", false)
 	if err != nil {
 		return nil, err
@@ -135,22 +122,8 @@ func searchEmails(c *client.Client, filter MailFilter) ([]*imap.Message, error) 
 		return nil, err
 	}
 
-	messagesChan := make(chan *imap.Message)
-	seqset := new(imap.SeqSet)
-	seqset.AddNum(ids...)
-
-	go func() {
-		if err := c.Fetch(seqset, []imap.FetchItem{imap.FetchEnvelope}, messagesChan); err != nil {
-			log.Printf("Error fetching messages: %s\n", err.Error())
-		}
-	}()
-
-	var messages []*imap.Message
-	for msg := range messagesChan {
-		if msg != nil {
-			messages = append(messages, msg)
-		}
-	}
+	messages := new(imap.SeqSet)
+	messages.AddNum(ids...)
 
 	return messages, nil
 }

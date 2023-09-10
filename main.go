@@ -12,6 +12,15 @@ import (
 	"github.com/joho/godotenv"
 )
 
+type MailFilter struct {
+	Mail           string `json:"mail"`
+	Subject        string `json:"subject"`
+	FailIfFound    bool   `json:"fail_if_found"`
+	HourThreshold  int    `json:"hour_threshold"`
+	Comment        string `json:"comment"`
+	FailIfNotFound bool   `json:"fail_if_not_found"`
+}
+
 func main() {
 	err := godotenv.Load()
 	if err != nil {
@@ -30,15 +39,6 @@ func main() {
 	if err := checkEmailsWithFilters(filters, os.Getenv("SERVER"), os.Getenv("EMAIL"), os.Getenv("PASSWORD"), os.Getenv("MAIL_OK_FOLDER"), os.Getenv("MAIL_FAILED_FOLDER")); err != nil {
 		log.Fatalln(err)
 	}
-}
-
-type MailFilter struct {
-	Mail           string `json:"mail"`
-	Subject        string `json:"subject"`
-	FailIfFound    bool   `json:"fail_if_found"`
-	HourThreshold  int    `json:"hour_threshold"`
-	Comment        string `json:"comment"`
-	FailIfNotFound bool   `json:"fail_if_not_found"`
 }
 
 func checkEmailsWithFilters(filters []MailFilter, server, email, password, mailOkFolder, mailFailedFolder string) error {
@@ -69,14 +69,14 @@ func checkEmailsWithFilters(filters []MailFilter, server, email, password, mailO
 		}
 
 		if filter.FailIfFound {
-			if err := moveMessages(c, messages, mailFailedFolder); err != nil {
+			if err := c.Move(messages, mailFailedFolder); err != nil {
 				log.Println(err)
 			} else {
 				log.Printf("Moved messages to %s\n", mailFailedFolder)
 			}
 			anyErrors = true
 		} else {
-			if err := moveMessages(c, messages, mailOkFolder); err != nil {
+			if err := c.Move(messages, mailOkFolder); err != nil {
 				log.Println(err)
 			} else {
 				log.Printf("Moved messages to %s\n", mailOkFolder)
@@ -126,12 +126,4 @@ func searchEmails(c *client.Client, filter MailFilter) (*imap.SeqSet, error) {
 	messages.AddNum(ids...)
 
 	return messages, nil
-}
-
-func moveMessages(c *client.Client, messages *imap.SeqSet, folderName string) error {
-	err := c.Move(messages, folderName)
-	if err != nil {
-		return err
-	}
-	return nil
 }

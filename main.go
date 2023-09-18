@@ -36,21 +36,25 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	if err := checkEmailsWithFilters(filters, os.Getenv("SERVER"), os.Getenv("EMAIL"), os.Getenv("PASSWORD"), os.Getenv("MAIL_OK_FOLDER"), os.Getenv("MAIL_FAILED_FOLDER")); err != nil {
+	c, err := connectToIMAP(os.Getenv("SERVER"), os.Getenv("EMAIL"), os.Getenv("PASSWORD"))
+	if err != nil {
+		log.Fatalln(err)
+	}
+	defer c.Logout()
+
+	mailOkFolder := os.Getenv("MAIL_OK_FOLDER")
+	mailFailedFolder := os.Getenv("MAIL_FAILED_FOLDER")
+
+	c.Create(mailOkFolder)
+	c.Create(mailFailedFolder)
+
+	if err := checkEmailsWithFilters(c, filters, mailOkFolder, mailFailedFolder); err != nil {
 		log.Fatalln(err)
 	}
 }
 
-func checkEmailsWithFilters(filters []MailFilter, server, email, password, mailOkFolder, mailFailedFolder string) error {
+func checkEmailsWithFilters(c *client.Client, filters []MailFilter, mailOkFolder, mailFailedFolder string) error {
 	anyErrors := false
-	c, err := connectToIMAP(server, email, password)
-	if err != nil {
-		return err
-	}
-	defer c.Logout()
-
-	c.Create(mailOkFolder)
-	c.Create(mailFailedFolder)
 
 	for _, filter := range filters {
 		messages, err := searchEmails(c, filter)
@@ -66,9 +70,7 @@ func checkEmailsWithFilters(filters []MailFilter, server, email, password, mailO
 
 		if filter.FailIfFound {
 			log.Printf("Error: %+v\n", filter)
-		}
 
-		if filter.FailIfFound {
 			if err := c.Move(messages, mailFailedFolder); err != nil {
 				log.Println(err)
 			} else {

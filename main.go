@@ -24,21 +24,20 @@ type MailFilter struct {
 func main() {
 	err := godotenv.Load()
 	if err != nil {
-		log.Fatalln("Error loading .env file")
+		log.Fatalln("Error loading .env file:", err)
 	}
 
-	filtersContents, err := os.ReadFile("filters.json")
+	filtersFile, err := os.Open("filters.json")
 	if err != nil {
-		log.Fatalln(err)
+		log.Fatalln("Error opening JSON file:", err)
 	}
-	var filters []MailFilter
-	if err := json.Unmarshal(filtersContents, &filters); err != nil {
-		log.Fatalln(err)
-	}
+	defer filtersFile.Close()
+
+	filtersDecoder := json.NewDecoder(filtersFile)
 
 	c, err := connectToIMAP(os.Getenv("SERVER"), os.Getenv("EMAIL"), os.Getenv("PASSWORD"))
 	if err != nil {
-		log.Fatalln(err)
+		log.Fatalln("Error connecting to IMAP server:", err)
 	}
 	defer c.Logout()
 
@@ -48,15 +47,22 @@ func main() {
 	c.Create(mailOkFolder)
 	c.Create(mailFailedFolder)
 
-	if err := checkEmailsWithFilters(c, filters, mailOkFolder, mailFailedFolder); err != nil {
-		log.Fatalln(err)
+	if err := checkEmailsWithFilters(c, filtersDecoder, mailOkFolder, mailFailedFolder); err != nil {
+		log.Fatalln("Error checking emails:", err)
 	}
 }
 
-func checkEmailsWithFilters(c *client.Client, filters []MailFilter, mailOkFolder, mailFailedFolder string) error {
+func checkEmailsWithFilters(c *client.Client, filtersDecoder *json.Decoder, mailOkFolder, mailFailedFolder string) error {
 	anyErrors := false
 
-	for _, filter := range filters {
+	var filter MailFilter
+	filtersDecoder.Token()
+
+	for filtersDecoder.More() {
+		if err := filtersDecoder.Decode(&filter); err != nil {
+			log.Fatalln("Error decoding JSON:", err)
+		}
+
 		messages, err := searchEmails(c, filter)
 		if err != nil {
 			return err
@@ -85,6 +91,8 @@ func checkEmailsWithFilters(c *client.Client, filters []MailFilter, mailOkFolder
 			}
 		}
 	}
+
+	filtersDecoder.Token()
 
 	if anyErrors {
 		return errors.New("found errors")
